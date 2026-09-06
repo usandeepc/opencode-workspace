@@ -2,9 +2,9 @@
   "id": "opencode",
   "version": "1.0.0",
   "name": "opencode",
-  "description": "Installs a pinned opencode CLI and mounts host opencode config, agents, skills, and auth, with a persistent session volume.",
-  "documentationURL": "https://github.com/usandeepc/opencode-workspace/tree/main/src/opencode",
-  "licenseURL": "https://github.com/usandeepc/opencode-workspace/blob/main/LICENSE",
+  "description": "Installs a pinned opencode CLI and provisions dynamic authentication workflows with a persistent session volume.",
+  "documentationURL": "https://github.com",
+  "licenseURL": "https://github.com",
   "keywords": ["opencode", "ai", "assistant"],
   "installsAfter": ["ghcr.io/devcontainers/features/common-utils:2"],
   "options": {
@@ -16,14 +16,14 @@
     }
   },
   "containerEnv": {
-    "PATH": "${containerEnv:PATH}:/home/vscode/.opencode/bin"
+    "PATH": "${containerEnv:HOME}/.opencode/bin:${PATH}"
   },
   "mounts": [
-    { "source": "${localEnv:HOME}/.config/opencode", "target": "/home/vscode/.config/opencode", "type": "bind" },
-    { "source": "${localEnv:HOME}/.agents", "target": "/home/vscode/.agents", "type": "bind" },
-    { "source": "${localEnv:HOME}/.local/share/opencode/auth.json", "target": "/mnt/opencode-auth.json", "type": "bind" },
-    { "source": "opencode-data", "target": "/home/vscode/.local/share/opencode", "type": "volume" }
+    {
+      "source": "opencode-data",
+      "target": "${containerEnv:HOME}/.local/share/opencode",
+      "type": "volume"
+    }
   ],
-  "postCreateCommand": "sudo mkdir -p /home/vscode/.local/share/opencode && sudo chown -R vscode:vscode /home/vscode/.local/share/opencode && if [ -f /mnt/opencode-auth.json ]; then cp /mnt/opencode-auth.json /home/vscode/.local/share/opencode/auth.json && chmod 600 /home/vscode/.local/share/opencode/auth.json; fi",
-  "postStartCommand": "if [ -f /mnt/opencode-auth.json ]; then cp /mnt/opencode-auth.json /home/vscode/.local/share/opencode/auth.json && chmod 600 /home/vscode/.local/share/opencode/auth.json; fi"
+  "onCreateCommand": "mkdir -p ${HOME}/.local/share/opencode ${HOME}/.opencode-host-sync && if [ -f ${HOME}/.opencode-host-sync/auth.json ]; then cp ${HOME}/.opencode-host-sync/auth.json ${HOME}/.local/share/opencode/auth.json && chmod 600 ${HOME}/.local/share/opencode/auth.json; fi"
 }
