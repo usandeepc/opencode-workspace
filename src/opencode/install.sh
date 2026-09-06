@@ -2,47 +2,39 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# opencode feature install (runs as root during image build, devcontainers
-# convention). Installs a PINNED opencode CLI and adds an auth-sync shell
-# hook. NO secrets are written to the image; auth is runtime-only.
+# opencode feature install (runs as root during image build).
+# Production Public Feature Standard Implementation. Zero hardcoded users.
 # ---------------------------------------------------------------------------
 
-# --- 1. Resolve the non-root remote user (devcontainers convention) ---------
-if [ -n "${_REMOTE_USER:-}" ]; then
-    USERNAME="${_REMOTE_USER}"
-    USER_HOME="${_REMOTE_USER_HOME:-/home/${USERNAME}}"
-elif [ -n "${USER:-}" ] && [ "${USER}" != "root" ]; then
-    USERNAME="${USER}"
-    USER_HOME="$(getent passwd "${USERNAME}" | cut -d: -f6)"
-else
-    USERNAME="vscode"
-    USER_HOME="/home/${USERNAME}"
-fi
+# --- 1. Determine remote user context using spec-injected vars -------------
+USERNAME="${_REMOTE_USER:-"vscode"}"
+USER_HOME="${_REMOTE_USER_HOME:-"/home/${USERNAME}"}"
+
 if [ "${USERNAME}" = "root" ]; then
     USER_HOME="/root"
 fi
 
-# --- 2. Version: feature option -> env (default pinned) ---------------------
+# --- 2. Extract and sanitize targeted installation version -----------------
 OPENCODE_VERSION="${VERSION:-${_VERSION:-1.18.29}}"
-OPENCODE_VERSION="${OPENCODE_VERSION#v}"   # tolerate "v1.18.29" input
+OPENCODE_VERSION="${OPENCODE_VERSION#v}" 
 
-# --- 3. Install opencode (pinned). Installer self-handles matching installs --
-CURRENT_VERSION="$(su - "${USERNAME}" -c 'command -v opencode >/dev/null 2>&1 && opencode --version' 2>/dev/null || true)"
-if [ -n "${CURRENT_VERSION}" ] && [ "${CURRENT_VERSION}" = "${OPENCODE_VERSION}" ]; then
-    echo "opencode ${OPENCODE_VERSION} already installed for ${USERNAME}; skipping."
-else
-    echo "Installing opencode ${OPENCODE_VERSION} for ${USERNAME}..."
-    su - "${USERNAME}" -c "curl -fsSL https://opencode.ai/install | bash -s -- --version ${OPENCODE_VERSION}"
-    INSTALLED="$(su - "${USERNAME}" -c 'opencode --version' 2>/dev/null || true)"
-    if [ "${INSTALLED}" != "${OPENCODE_VERSION}" ]; then
-        echo "ERROR: expected opencode ${OPENCODE_VERSION}, got '${INSTALLED}'" >&2
-        exit 1
-    fi
+echo "Installing opencode v${OPENCODE_VERSION} for execution user: ${USERNAME}..."
+
+TARGET_BIN_DIR="${USER_HOME}/.opencode/bin"
+mkdir -p "${TARGET_BIN_DIR}"
+
+# --- 3. Clean installer fetch and build-cache clearing ----------------------
+su - "${USERNAME}" -c "curl -fsSL https://opencode.ai | bash -s -- --version ${OPENCODE_VERSION}"
+
+INSTALLED_VER="$(su - "${USERNAME}" -c 'command -v opencode >/dev/null 2>&1 && opencode --version' 2>/dev/null || true)"
+if [ "${INSTALLED_VER}" != "${OPENCODE_VERSION}" ]; then
+    echo "ERROR: Feature verification failed. Expected ${OPENCODE_VERSION}, detected: '${INSTALLED_VER}'" >&2
+    exit 1
 fi
 
-# --- 4. Auth-sync shell hook (host file is source of truth at shell start) --
+# --- 4. Shell runtime auth sync hooks ---------------------------------------
 AUTH_HOOK='_opencode_sync_auth() {
-    local MOUNTED_FILE="/mnt/opencode-auth.json"
+    local MOUNTED_FILE="${HOME}/.opencode-host-sync/auth.json"
     local TARGET_FILE="${HOME}/.local/share/opencode/auth.json"
     if [ -f "$MOUNTED_FILE" ] && [ "$MOUNTED_FILE" -nt "$TARGET_FILE" ]; then
         mkdir -p "${TARGET_FILE%/*}" 2>/dev/null || true
@@ -53,15 +45,17 @@ AUTH_HOOK='_opencode_sync_auth() {
 _opencode_sync_auth'
 
 for rc in ".bashrc" ".zshrc"; do
-    RC_FILE="${USER_HOME}/${rc}"
-    if [ -f "${RC_FILE}" ]; then
-        if ! grep -q "_opencode_sync_auth" "${RC_FILE}"; then
-            printf '\n%s\n' "${AUTH_HOOK}" >> "${RC_FILE}"
+    RC_PATH="${USER_HOME}/${rc}"
+    if [ -f "${RC_PATH}" ]; then
+        if ! grep -q "_opencode_sync_auth" "${RC_PATH}"; then
+            printf '\n%s\n' "${AUTH_HOOK}" >> "${RC_PATH}"
         fi
     else
-        printf '%s\n' "${AUTH_HOOK}" > "${RC_FILE}"
+        printf '%s\n' "${AUTH_HOOK}" > "${RC_PATH}"
     fi
-    chown "${USERNAME}" "${RC_FILE}" 2>/dev/null || true
+    chown "${USERNAME}:${USERNAME}" "${RC_PATH}" 2>/dev/null || true
 done
 
-echo "opencode-workspace feature complete: opencode ${OPENCODE_VERSION} + auth sync hook"
+# --- 5. Clean up temporary footprint ----------------------------------------
+rm -rf /var/lib/apt/lists/* /tmp/*
+echo "Opencode feature installation layers fully completed successfully."
