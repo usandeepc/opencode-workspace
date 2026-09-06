@@ -1,6 +1,6 @@
 {
   "id": "opencode",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "name": "opencode",
   "description": "Installs the opencode CLI and provisions authentication/session sync with a persistent volume.",
   "documentationURL": "https://github.com/usandeepc/opencode-workspace",
