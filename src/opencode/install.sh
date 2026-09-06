@@ -28,7 +28,7 @@ echo "Installing opencode v${OPENCODE_VERSION} for execution user: ${USERNAME}..
 
 TARGET_BIN_DIR="${USER_HOME}/.opencode/bin"
 mkdir -p "${TARGET_BIN_DIR}"
-
+chown "${USERNAME}:${USERNAME}" "${USER_HOME}/.opencode" "${TARGET_BIN_DIR}" 2>/dev/null || true
 # --- 3. Clean installer fetch and build-cache clearing ----------------------
 su - "${USERNAME}" -c "curl -fsSL https://opencode.ai/install | bash -s -- --version ${OPENCODE_VERSION}" || {
     echo "WARNING: installer reported an error; verifying installed binary." >&2
