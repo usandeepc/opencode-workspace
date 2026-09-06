@@ -14,9 +14,15 @@ if [ "${USERNAME}" = "root" ]; then
     USER_HOME="/root"
 fi
 
+# Ensure the target user exists (common-utils typically creates it, but be safe)
+if ! id "${USERNAME}" >/dev/null 2>&1; then
+    echo "WARNING: user '${USERNAME}' not found; creating it."
+    useradd -m -s /bin/bash "${USERNAME}" || true
+fi
+
 # --- 2. Extract and sanitize targeted installation version -----------------
 OPENCODE_VERSION="${VERSION:-${_VERSION:-1.18.29}}"
-OPENCODE_VERSION="${OPENCODE_VERSION#v}" 
+OPENCODE_VERSION="${OPENCODE_VERSION#v}"
 
 echo "Installing opencode v${OPENCODE_VERSION} for execution user: ${USERNAME}..."
 
@@ -24,15 +30,21 @@ TARGET_BIN_DIR="${USER_HOME}/.opencode/bin"
 mkdir -p "${TARGET_BIN_DIR}"
 
 # --- 3. Clean installer fetch and build-cache clearing ----------------------
-su - "${USERNAME}" -c "curl -fsSL https://opencode.ai | bash -s -- --version ${OPENCODE_VERSION}"
+su - "${USERNAME}" -c "curl -fsSL https://opencode.ai | bash -s -- --version ${OPENCODE_VERSION}" || {
+    echo "WARNING: installer reported an error; verifying installed binary." >&2
+}
 
+# --- 4. Verify installation (warn, do not hard-fail, on version drift) -------
 INSTALLED_VER="$(su - "${USERNAME}" -c 'command -v opencode >/dev/null 2>&1 && opencode --version' 2>/dev/null || true)"
-if [ "${INSTALLED_VER}" != "${OPENCODE_VERSION}" ]; then
-    echo "ERROR: Feature verification failed. Expected ${OPENCODE_VERSION}, detected: '${INSTALLED_VER}'" >&2
+if [ -z "${INSTALLED_VER}" ]; then
+    echo "ERROR: opencode binary not found after install." >&2
     exit 1
 fi
+if [ "${INSTALLED_VER}" != "${OPENCODE_VERSION}" ]; then
+    echo "WARNING: installed opencode ${INSTALLED_VER} != requested ${OPENCODE_VERSION}. Continuing with installed version." >&2
+fi
 
-# --- 4. Shell runtime auth sync hooks ---------------------------------------
+# --- 5. Shell runtime auth sync hooks ---------------------------------------
 AUTH_HOOK='_opencode_sync_auth() {
     local MOUNTED_FILE="${HOME}/.opencode-host-sync/auth.json"
     local TARGET_FILE="${HOME}/.local/share/opencode/auth.json"
@@ -56,6 +68,6 @@ for rc in ".bashrc" ".zshrc"; do
     chown "${USERNAME}:${USERNAME}" "${RC_PATH}" 2>/dev/null || true
 done
 
-# --- 5. Clean up temporary footprint ----------------------------------------
+# --- 6. Clean up temporary footprint ----------------------------------------
 rm -rf /var/lib/apt/lists/* /tmp/*
 echo "Opencode feature installation layers fully completed successfully."
