@@ -1,0 +1,25 @@
+name: "Release dev container features & Generate Documentation"
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["src/**"]
+
+jobs:
+  deploy:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # docs PR
+      pull-requests: write    # docs PR
+      packages: write         # publish to GHCR
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 (SHA-pinned)
+      - name: "Publish Features"
+        uses: devcontainers/action@1082abd5d2bf3a11abccba70eef98df068277772 # v1 (SHA-pinned)
+        with:
+          publish-features: "true"
+          base-path-to-features: "./src"
+          generate-docs: "true"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
