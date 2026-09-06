@@ -1,6 +1,6 @@
 {
   "id": "opencode",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "name": "opencode",
   "description": "Installs the opencode CLI and provisions authentication/session sync with a persistent volume.",
   "documentationURL": "https://github.com/usandeepc/opencode-workspace",
@@ -16,12 +16,12 @@
     }
   },
   "containerEnv": {
-    "PATH": "${PATH}:${HOME}/.opencode/bin"
+    "PATH": "${PATH}:/home/vscode/.opencode/bin"
   },
   "mounts": [
     {
       "source": "opencode-data",
-      "target": "${HOME}/.local/share/opencode",
+      "target": "/home/vscode/.local/share/opencode",
       "type": "volume"
     }
   ],
