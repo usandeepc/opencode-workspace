@@ -1,10 +1,10 @@
 {
   "id": "opencode",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "opencode",
-  "description": "Installs a pinned opencode CLI and provisions dynamic authentication workflows with a persistent session volume.",
-  "documentationURL": "https://github.com",
-  "licenseURL": "https://github.com",
+  "description": "Installs the opencode CLI and provisions authentication/session sync with a persistent volume.",
+  "documentationURL": "https://github.com/usandeepc/opencode-workspace",
+  "licenseURL": "https://github.com/usandeepc/opencode-workspace",
   "keywords": ["opencode", "ai", "assistant"],
   "installsAfter": ["ghcr.io/devcontainers/features/common-utils:2"],
   "options": {
@@ -16,12 +16,12 @@
     }
   },
   "containerEnv": {
-    "PATH": "${containerEnv:HOME}/.opencode/bin:${PATH}"
+    "PATH": "${PATH}:${HOME}/.opencode/bin"
   },
   "mounts": [
     {
       "source": "opencode-data",
-      "target": "${containerEnv:HOME}/.local/share/opencode",
+      "target": "${HOME}/.local/share/opencode",
       "type": "volume"
     }
   ],
