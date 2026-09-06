@@ -35,14 +35,12 @@ su - "${USERNAME}" -c "curl -fsSL https://opencode.ai/install | bash -s -- --ver
 }
 
 # --- 4. Verify installation (warn, do not hard-fail, on version drift) -------
-INSTALLED_VER="$(su - "${USERNAME}" -c 'command -v opencode >/dev/null 2>&1 && opencode --version' 2>/dev/null || true)"
-if [ -z "${INSTALLED_VER}" ]; then
-    echo "ERROR: opencode binary not found after install." >&2
+INSTALLED_BIN="${TARGET_BIN_DIR}/opencode"
+if [ ! -x "${INSTALLED_BIN}" ]; then
+    echo "ERROR: opencode binary not found at ${INSTALLED_BIN}." >&2
     exit 1
 fi
-if [ "${INSTALLED_VER}" != "${OPENCODE_VERSION}" ]; then
-    echo "WARNING: installed opencode ${INSTALLED_VER} != requested ${OPENCODE_VERSION}. Continuing with installed version." >&2
-fi
+INSTALLED_VER="$(su - "${USERNAME}" -c "'${INSTALLED_BIN}' --version" 2>/dev/null || true)"
 
 # --- 5. Shell runtime auth sync hooks ---------------------------------------
 AUTH_HOOK='_opencode_sync_auth() {
