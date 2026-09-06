@@ -67,5 +67,9 @@ for rc in ".bashrc" ".zshrc"; do
 done
 
 # --- 6. Clean up temporary footprint ----------------------------------------
-rm -rf /var/lib/apt/lists/* /tmp/*
+# NOTE: never `rm -rf /tmp/*` here. During the image build the feature content
+# is bind-mounted read-only at /tmp/build-features-src/..., so deleting /tmp
+# tries to remove a read-only mount and fails with "Read-only file system".
+# The generated Dockerfile cleans up the feature source copy itself afterwards.
+rm -rf /var/lib/apt/lists/*
 echo "Opencode feature installation layers fully completed successfully."
